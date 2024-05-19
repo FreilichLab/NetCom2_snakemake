@@ -229,7 +229,7 @@ snakemake --cores 10 results/merged_netcom2.txt
 
 ## Contributors
 
-[Gon Carmi](https://www.freilich-lab.com/members) \
+[Gon Carmi](https://www.freilich-lab.com/members)
 
 [Shiri Freilich](https://www.freilich-lab.com/) 
 
