@@ -95,7 +95,7 @@ snakemake --filegraph results/merged_netcom2.txt  | dot -Tpdf > netcom2_file_gra
 
 ## Contributors
 
-[Gon Carmi](https://www.freilich-lab.com/members) \
+[Gon Carmi](https://www.freilich-lab.com/members)
 
 [Shiri Freilich](https://www.freilich-lab.com/) 
 
