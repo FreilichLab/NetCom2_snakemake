@@ -189,7 +189,7 @@ cf_treatment_removal_network_knockout_png.png
 cf_treatment_removal_network_knockout_pdf.pdf  
 
 ```
-## To generate NetCom2 snakemake workflow file graphs
+## Execution of NetCom2 workflow
 
 ```shell
 
