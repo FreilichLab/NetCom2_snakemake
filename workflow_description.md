@@ -93,9 +93,6 @@ snakemake --filegraph 'results/edgeR/EC_diff_abundance.tsv' | dot -Tpng > EC_dif
 snakemake --filegraph results/merged_netcom2.txt  | dot -Tpdf > netcom2_file_graph.pdf
 ```
 
-<img src="Network.jpg" width=600, height=600 align="center" />
-
-
 ## Contributors
 
 [Gon Carmi](https://www.freilich-lab.com/members) \
