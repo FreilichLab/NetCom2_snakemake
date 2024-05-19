@@ -1,0 +1,22 @@
+gene_taxonomy_annotation:
+    "data/GeneTaxonomicAnnotation.txt"
+gene_functional_annotation:
+    "data/GeneECAnnotation.txt"
+contig_count_table:
+    "data/count_table_contigs.txt"
+taxa_level:
+    "order"
+treatments:
+    ["cf","NCF"]
+edgeR:
+    sample_metadata: 
+        "data/sample_metadata.tsv"
+    contrasts:
+        "data/contrasts.txt"
+    fdr:
+        0.05
+    prifix:
+        "Compost_"
+    group_name_col:
+        "Treatment_Rootstock"
+

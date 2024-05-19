@@ -1,0 +1,2 @@
+cfVSNCF = (Compost_cf) - (Nocompost_NCF)
+

@@ -1,0 +1,296 @@
+configfile: "config/config.yaml"
+
+TREATMETS = config['treatments']
+
+#print(TREATMETS)
+
+#rule removal piple is steps 1-5
+
+#ctable is count_table
+rule Removal_pipeline:
+    input:
+        gene_taxonomy_annotation = config['gene_taxonomy_annotation'],
+
+        gene_functional_annotation = config['gene_functional_annotation'],
+
+        contig_count_table = config['contig_count_table'],
+    output:
+        get_contig_taxonomy_ranked = 'results/removal_pipline/get_contig_taxonomy_ranked.txt',
+        
+        contig_taxa_ctable = 'results/removal_pipline/contig_taxa_ctable.tsv',
+
+        gene_functional_EC = 'results/removal_pipline/gene_functional_EC.txt',
+
+        gene_func_ec_contig_ctable = 'results/removal_pipline/gene_func_ec_contig_ctable.tsv',
+
+        EC_contig_taxa_ctable = 'results/removal_pipline/EC_contig_taxa_ctable.tsv',
+    params:
+        taxa_level = config['taxa_level'],
+
+        temp_file = 'results/removal_pipline/temp1'
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/Removal_Pipeline.py {input.gene_taxonomy_annotation} {input.gene_functional_annotation} {input.contig_count_table} {params.taxa_level} {params.temp_file} {output.get_contig_taxonomy_ranked} {output.contig_taxa_ctable} {output.gene_functional_EC} {output.gene_func_ec_contig_ctable} {output.EC_contig_taxa_ctable}"
+
+#gene_taxonomy_annotation = sys.argv[1] #gene taxonomy annotation
+#gene_functional_annotation = sys.argv[2] #gene functional annotation
+#contig_count_table = sys.argv[3] # contig count table
+#level = sys.argv[4] #taxonomy level
+#tempfile = sys.argv[5] #temp_file
+#get_contig_taxonomy_ranked = sys.argv[6]
+#contig_taxa_ctable = sys.argv[7] #contig_taxa_ctable
+#gene_functional_EC = sys.argv[8] #gene_functional_EC
+#gene_func_ec_contig_ctable = sys.argv[9] #gene_functional_EC_contig_ctable
+#EC_contig_taxa_ctable = sys.argv[10] #EC_contig_taxa_ctable
+        
+#splites count table by treatments, e.g., cf, NCF
+#output of original step 5
+rule split_count_table_by_treatment:
+    input:
+        contig_ctable = 'results/removal_pipline/contig_taxa_ctable.tsv',
+        #ctable = count_table
+
+        gene_func_ec_contig_ctable = 'results/removal_pipline/gene_func_ec_contig_ctable.tsv',
+
+        EC_contig_taxa_ctable = 'results/removal_pipline/EC_contig_taxa_ctable.tsv'
+
+    output:
+        treatment_EC_contig_taxa_ctable = 'results/split_ctable/{treatment}_EC_contig_taxa_ctable.tsv'
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/split_ECcodes_count_table_conting.py {input.EC_contig_taxa_ctable} {wildcards.treatment} {output.treatment_EC_contig_taxa_ctable}"
+
+#EC_contig_taxa_ctable =  sys.argv[1]
+#treatmet = sys.argv[2]
+#treatment_EC_contig_taxa_ctable = sys.argv[3]
+
+#step 6: claculate_enzyme_diversity_score
+
+rule claculate_enzyme_diversity_score:
+    input:
+        EC_contig_taxa_ctable = 'results/split_ctable/{treatment}_EC_contig_taxa_ctable.tsv',
+
+    output:
+        RscriptOutput = 'results/enzyme_divierisy/{treatment}_RscriptOutput.csv',
+
+        RscriptOutput_filter_dominance = 'results/enzyme_divierisy/{treatment}_RscriptOutput_filter_dominance.csv',
+
+        RscriptOutput_filter_IdentMostFreq = 'results/enzyme_divierisy/{treatment}_RscriptOutput_filter_IdentMostFreq.csv',
+
+        RscriptOutput_filter_IdentMostFreqbyEnzyme = 'results/enzyme_divierisy/{treatment}_RscriptOutput_filter_IdentMostFreqbyEnzyme.csv',
+
+        EC_w_taxaon_dominant = 'results/enzyme_divierisy/{treatment}_EC_w_taxaon_dominant.txt',
+
+        EC_w_taxaon_dominant_knockout = 'results/enzyme_divierisy/{treatment}_EC_w_taxaon_dominant_knockout.txt',
+
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/calculate_enzyme_diversity_score.py {input.EC_contig_taxa_ctable} {output.RscriptOutput} {output.RscriptOutput_filter_dominance} {output.RscriptOutput_filter_IdentMostFreq} {output.RscriptOutput_filter_IdentMostFreqbyEnzyme} {output.EC_w_taxaon_dominant} {output.EC_w_taxaon_dominant_knockout}" 
+
+#EC_contig_taxa_ctable = sys.argv[1]
+#RscriptOutput = sys.argv[2]
+#RscriptOutput_filter_dominance = sys.argv[3]
+#RscriptOutput_filter_IdentMostFreq = sys.argv[4]
+#RscriptOutput_filter_IdentMostFreqbyEnzyme = sys.argv[5]
+#ECs_with_dominant_taxon = sys.argv[6]
+#ECs_with_dominant_taxon_knockout =  sys.argv[7]
+
+rule enzyme_diversity:
+    input:
+        treatment_EC_w_taxaon_dominant = expand('results/enzyme_divierisy/{treatment}_EC_w_taxaon_dominant.txt',treatment=TREATMETS),
+
+    output:
+        merged = 'results/enzyme_divierisy/merged.txt'
+    run:
+        shell("cat {input.treatment_EC_w_taxaon_dominant} > {output.merged}")
+
+#step8: Determine diffenetial abundance
+
+rule determine_diffenetial_abundance:
+    input:
+        merged = 'results/enzyme_divierisy/merged.txt',
+
+        gene_func_ec_contig_ctable = 'results/removal_pipline/gene_func_ec_contig_ctable.tsv',
+
+        sample_metadata = config['edgeR']['sample_metadata'],
+
+        contrasts = config['edgeR']['contrasts']
+    output:
+        EC_edgeR = 'results/edgeR/EC_diff_abundance.tsv',
+        EC_edgeR_fig = 'results/edgeR/EC_diff_abundance.png'
+    params:
+        fdr = config['edgeR']['fdr'],
+
+        prifix = config['edgeR']['prifix'],
+
+        group_name_col = config['edgeR']['group_name_col']
+
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "Rscript workflow/scripts/using_edgeR_generic.R {input.gene_func_ec_contig_ctable} {input.sample_metadata} {params.prifix} {params.group_name_col} {input.contrasts} {params.fdr} {output.EC_edgeR} {output.EC_edgeR_fig}"
+
+###continue after manuel netcom step
+
+#rule get_necom_results:
+#    input: 
+#        EC_edgeR = 'results/edgeR/EC_diff_abundance.tsv',
+#        ziped_res = 'data/netcom_res.zip'
+#    output:
+#        res_dir = 'results/netcom/',
+#        dummy_res_zip = 'results/netcom/dummy_res.zip'
+#    #params:
+#        #dummy_res_zip = 'results/netcom/dummy_res.zip'
+#    run:
+#        shell("unzip {input.ziped_res} -d {output.res_dir}")
+#        shell("cp {input.ziped_res} {output.dummy_res_zip}")
+#
+rule Community_knockouts_simulations:
+    input:
+        treatment_seeds = 'results/netcom/{treatment}_resources.txt',
+        #dummy_res_zip = 'results/netcom/dummy_res.zip',
+
+        EC_w_taxaon_dominant_knockout = 'results/enzyme_divierisy/{treatment}_EC_w_taxaon_dominant_knockout.txt',
+
+    output:
+        treatment_compounds = 'results/community_konckouts_simulation/{treatment}_compounds.txt',
+        treatment_compounds_complementry_table = 'results/community_konckouts_simulation/{treatment}_compounds_complementry_table.txt',
+        treatment_compounds_complementry_list = 'results/community_konckouts_simulation/{treatment}_compounds_complementry_list.txt',
+
+    params:
+        netcom_module_relative_path = "./workflow/scripts/netcom",
+        sim_log_dir = ('results/community_konckouts_simulation/')
+
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/Sim4RemovalNet.py {params.netcom_module_relative_path} {input.EC_w_taxaon_dominant_knockout} {input.treatment_seeds} {params.sim_log_dir} {wildcards.treatment} {output.treatment_compounds} {output.treatment_compounds_complementry_table} {output.treatment_compounds_complementry_list}"
+
+
+rule prepare_pathway_compounds_for_visual:
+    input:
+        treatment_compounds_pathway = 'results/netcom/{treatment}_Compounds_pathway.csv',
+
+        treatment_compounds_complementry_list = 'results/community_konckouts_simulation/{treatment}_compounds_complementry_list.txt',
+    output:
+        treatment_compounds_pathway =  'results/netcom/{treatment}_vis_Compounds_pathway.txt'
+
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/vis_pathway.py {input.treatment_compounds_pathway} {input.treatment_compounds_complementry_list} {output.treatment_compounds_pathway}"
+
+#{input.treatment_compounds_pathway}
+#pathway_table_file = sys.argv[1]
+#
+#{output.treatment_compounds_pathway}
+#treatment_pathway_table_file = sys.argv[2]
+
+
+#netcom_module_relative_path = sys.argv[1]
+#EC_w_taxaon_dominant_knockout = sys.argv[2]
+#treatment_seeds = sys.argv[3]
+#sim_log_dir = sys.argv[4]
+#treatment = sys.argv[5]
+#treatment_compounds = sys.argv[6]
+
+rule visualize_knockout_network:
+    input:
+        treatment_compounds = 'results/netcom/{treatment}_compounds.txt',
+        
+        treatment_seeds = 'results/netcom/{treatment}_resources.txt',
+
+        #treatment_ECs = 'results/removal_pipline/EC_contig_taxa_ctable.tsv',
+        
+        #this is input for edageR and same as output which is the input for netcom
+        
+        treatment_ECs = 'results/removal_pipline/gene_func_ec_contig_ctable.tsv', 
+
+        treatment_compounds_knockout =  'results/community_konckouts_simulation/{treatment}_compounds_complementry_table.txt',
+        
+        EC_w_taxaon_dominant_knockout = 'results/enzyme_divierisy/{treatment}_EC_w_taxaon_dominant_knockout.txt',
+
+        treatment_compounds_pathway =  'results/netcom/{treatment}_vis_Compounds_pathway.txt'
+    output:
+        treatment_compounds_network_notFiltered = 'results/community_konckouts_simulation/{treatment}_compounds_network_notFiltered.csv',
+
+        treatment_removal_network_knockout_png = 'results/community_konckouts_simulation/{treatment}_treatment_removal_network_knockout_png.png',
+
+        treatment_removal_network_knockout_pdf = 'results/community_konckouts_simulation/{treatment}_treatment_removal_network_knockout_pdf.pdf',
+
+        treatment_compounds_table = 'results/community_konckouts_simulation/{treatment}_compounds_complementry_pathway_table.tsv',
+
+        treatment_compounds_count_table = 'results/community_konckouts_simulation/{treatment}_compounds_complementry_pathway_count_table.tsv',
+
+
+    params:
+        netcom_module_relative_path = "./workflow/scripts/netcom/",
+
+        min_fragments_size = 1,
+
+        filter_hubness = 100,
+
+    conda:
+        "envs/netcom2_env.yaml"
+    shell:
+        "python workflow/scripts/Visualize_network_3.py {params.netcom_module_relative_path} {params.min_fragments_size} {params.filter_hubness} {input.treatment_compounds} {input.treatment_seeds} {input.treatment_ECs} {input.treatment_compounds_knockout} {input.EC_w_taxaon_dominant_knockout} {input.treatment_compounds_pathway} {output.treatment_compounds_network_notFiltered} {output.treatment_removal_network_knockout_png} {output.treatment_removal_network_knockout_pdf} {output.treatment_compounds_count_table} {output.treatment_compounds_table}"
+
+
+
+#scripts/Visualize_network_3.py
+#{params.netcom_module_relative_path}
+#{params.min_fragments_size}
+#{params.filter_hubness}
+#{input.treatment_compounds}
+#{input.treatment_seeds}
+#{input.treatment_ECs}
+#{input.treatment_compounds_knockout}
+#{input.EC_w_taxaon_dominant_knockout}
+#{input.treatment_compounds_pathway}
+######OUTPUT###########
+#{output.treatment_compounds_network_notFiltered}
+#{output.treatment_removal_network_knockout_png}
+#{output.treatment_removal_network_knockout_pdf}
+#{output.treatment_compounds_count_table}
+#{output.treatment_compounds_table}
+#<This is base folder>
+#netcom_module_relative_path = sys.argv[1]
+#<drop fragments with size smaller then>  = 1
+#min_fragments_size = int(sys.argv[2])
+#<integer of hubness to filter> = 100
+#filter_hubness = int(sys.argv[3])
+#<All_compounds_B_input txt file> =  allCompounds_BjSa.txt (netcom1, componds of treatment)
+#treatment_compounds = sys.argv[4]
+#<Seeds_B_input txt file> =  Seeds_BjSa.txt(netcom1, seeds of teatment)
+#treatment_seeds = sys.argv[5] 
+#<ECs_All_input txt file> = EC_ALL.txt (before split,gene_func_ec_contig_ctable )
+#treatment_ECs = sys.argv[6] 
+#<patches_Compounds> = Compounds_BjSa_order.txt(treatment_deltafile, from rotem)
+#treatment_compounds_knockout_ = sys.argv[7] # the _ is in the script, all is fine
+#<patches_Enzymes> = Enzymes_BjSa_Order_1.txt(treatment_knowckout taxon)
+#EC_w_taxaon_dominant_knockout_ = sys.argv[8]
+#<Pathways_Compounds> = Pathways_BjSa_order.txt (netcom1,bjsa, pathway by treatment with only delta_file_compounds)
+#treatment_compounds_pathway_ = sys.argv[9]
+#####OUTPUT###########
+#treatment_compounds_network_notFiltered =  sys.argv[10]
+#treatment_removal_network_knockout_png_ = sys.argv[11]
+#treatment_removal_network_knockout_pdf_ = sys.argv[12]
+#treatment_compounds_count_table = sys.argv[13]
+#treatment_compounds_table = sys.argv[14]
+#
+rule merge_netcom2:
+    input:
+        treatment_removal_network_knockout_png = expand('results/community_konckouts_simulation/{treatment}_treatment_removal_network_knockout_png.png',
+treatment=TREATMETS),
+
+        treatment_removal_network_knockout_pdf = expand('results/community_konckouts_simulation/{treatment}_treatment_removal_network_knockout_pdf.pdf',treatment=TREATMETS),
+
+        compounds_network_notFiltered = expand('results/community_konckouts_simulation/{treatment}_compounds_network_notFiltered.csv',treatment=TREATMETS),
+
+    output:
+        merged = 'results/merged_netcom2.txt'
+    run:
+        shell("echo {input.treatment_removal_network_knockout_png} {input.treatment_removal_network_knockout_pdf} {input.compounds_network_notFiltered} > {output.merged}")
