@@ -52,7 +52,7 @@ located at *config* subdirectory within NetCom2\_snakemake.
 
 ## Input files for NetCom2
 
-NetCom2 utilizes data from metagenome assmebled genomes (MAGs).
+NetCom2 utilizes metagenomic data.
 
 ### Gene taxonomy annotation
 
@@ -77,7 +77,7 @@ k141_5177763_4	"root;not assigned"
 
 ### Gene functional annotation
 
-NetCom2 utilizes EC numbers as gene functional annotation for genes derived from metagenome assmebled genomes (MAGs).
+NetCom2 utilizes EC numbers as gene functional annotation for genes derived from metagenomic data.
 
 1. Requried Gene functional annotation is EC number, e.g., EC:2.5.1.39.
 NetCom2 can extract EC annotation from full annotation as provided by gene annotation softwere
@@ -102,7 +102,7 @@ k141_5177763_1	Not assigned
 
 ### Contig count table
 
-NetCom2 utilizes count table of contigs derived from metagenome assmebled genomes (MAGs) within samples.
+NetCom2 utilizes count table of contigs derived from metagenomic data within samples.
 
 1. Contig id is the same as appears in gene\_id and denoted as ID column in count table (first)
 
